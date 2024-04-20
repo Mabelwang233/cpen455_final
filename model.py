@@ -50,6 +50,7 @@ class PixelCNNLayer_down(nn.Module):
         return u, ul
 
 
+
 class PixelCNN(nn.Module):
     def __init__(self, nr_resnet=5, nr_filters=80, nr_logistic_mix=10,
                     resnet_nonlinearity='concat_elu', input_channels=3):
@@ -64,6 +65,9 @@ class PixelCNN(nn.Module):
         self.nr_logistic_mix = nr_logistic_mix
         self.right_shift_pad = nn.ZeroPad2d((1, 0, 0, 0))
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
+
+        self.label_embedding = nn.Embedding(num_embeddings = 4, embedding_dim = 32)
+        self.reshape_label = nn.Linear(4, 32*32)
 
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
         self.down_layers = nn.ModuleList([PixelCNNLayer_down(down_nr_resnet[i], nr_filters,
@@ -97,7 +101,21 @@ class PixelCNN(nn.Module):
         self.init_padding = None
 
 
-    def forward(self, x, sample=False):
+    def forward(self, x, label = None,  sample=False):
+
+        if label is not None:
+            label = label.int()
+            label_embedded = self.label_embedding(label)
+            final_label_em = torch.zeros_like(x)
+            # label_embedded = self.reshape_label(label_embedded)
+            i = 0
+            for embedding in label_embedded:
+                embedding = embedding.unsqueeze(0).repeat(32,1)
+                embedding = embedding.repeat(3,1,1)
+                final_label_em[i] = embedding
+                i = i + 1
+            x = x + final_label_em
+
         # similar as done in the tf repo :
         if self.init_padding is not sample:
             xs = [int(y) for y in x.size()]
@@ -109,9 +127,10 @@ class PixelCNN(nn.Module):
             padding = Variable(torch.ones(xs[0], 1, xs[2], xs[3]), requires_grad=False)
             padding = padding.cuda() if x.is_cuda else padding
             x = torch.cat((x, padding), 1)
-
-        ###      UP PASS    ###
+        
         x = x if sample else torch.cat((x, self.init_padding), 1)
+        
+        ###      UP PASS    ###
         u_list  = [self.u_init(x)]
         ul_list = [self.ul_init[0](x) + self.ul_init[1](x)]
         for i in range(3):
