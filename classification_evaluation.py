@@ -20,15 +20,14 @@ NUM_CLASSES = len(my_bidict)
 # Begin of your code
 def get_label(model, model_input, device):
     loss_op   = lambda real, fake : discretized_mix_logistic_loss(real, fake, sum_all= False)
-    ans = []
-    for image_in in model_input:
-        loss_all = []
-        image_in = image_in.unsqueeze(0).to(device)
-        for i in range(NUM_CLASSES):
-            image_out = model(image_in,  torch.tensor([i]).to(device))
-            loss_all.append(loss_op(image_in, image_out))
-        ans.append(np.argmin([loss.detach().cpu().numpy() for loss in loss_all]))
-    return torch.tensor(ans).to(device) 
+    loss_all = torch.empty(NUM_CLASSES, model_input.shape[0])
+    for i in range(NUM_CLASSES):
+        model_out = model(model_input,  torch.full((model_input.shape[0],), i).to(device))
+        result= loss_op(model_input, model_out)
+        loss_all[i] = result
+    # print(loss_all)
+    # print(torch.argmin(loss_all, dim=0))
+    return torch.argmin(loss_all, dim=0).to(device)
 # End of your code
 
 def classifier(model, data_loader, device):
@@ -78,7 +77,7 @@ if __name__ == '__main__':
     model = model.to(device)
     #Attention: the path of the model is fixed to 'models/conditional_pixelcnn.pth'
     #You should save your model to this path
-    model.load_state_dict(torch.load('models/conditional_pixelcnn.pth'))
+    model.load_state_dict(torch.load('models/conditional_pixelcnn_good1.pth'))
     model.eval()
     print('model parameters loaded')
     acc = classifier(model = model, data_loader = dataloader, device = device)
