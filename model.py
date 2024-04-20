@@ -66,7 +66,7 @@ class PixelCNN(nn.Module):
         self.right_shift_pad = nn.ZeroPad2d((1, 0, 0, 0))
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
 
-        self.label_embedding = nn.Embedding(num_embeddings = 4, embedding_dim = 32)
+        self.label_embedding = nn.Embedding(num_embeddings = 4, embedding_dim = 3*32*32)
         self.reshape_label = nn.Linear(4, 32*32)
 
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
@@ -106,15 +106,15 @@ class PixelCNN(nn.Module):
         if label is not None:
             label = label.int()
             label_embedded = self.label_embedding(label)
-            final_label_em = torch.zeros_like(x)
+            # final_label_em = torch.zeros_like(x)
             # label_embedded = self.reshape_label(label_embedded)
-            i = 0
-            for embedding in label_embedded:
-                embedding = embedding.unsqueeze(0).repeat(32,1)
-                embedding = embedding.repeat(3,1,1)
-                final_label_em[i] = embedding
-                i = i + 1
-            x = x + final_label_em
+            # i = 0
+            # for embedding in label_embedded:
+            #     embedding = embedding.unsqueeze(0).repeat(32,1)
+            #     embedding = embedding.repeat(3,1,1)
+            #     final_label_em[i] = embedding
+            #     i = i + 1
+            x = x + label_embedded.view(x.shape[0],3,32,32)
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:
