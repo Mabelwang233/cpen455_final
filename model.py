@@ -106,15 +106,18 @@ class PixelCNN(nn.Module):
         if label is not None:
             label = label.int()
             label_embedded = self.label_embedding(label)
-            # final_label_em = torch.zeros_like(x)
-            # label_embedded = self.reshape_label(label_embedded)
-            # i = 0
-            # for embedding in label_embedded:
-            #     embedding = embedding.unsqueeze(0).repeat(32,1)
-            #     embedding = embedding.repeat(3,1,1)
-            #     final_label_em[i] = embedding
-            #     i = i + 1
-            x = x + label_embedded.view(x.shape[0],3,32,32)
+            # One-hot encode the labels
+            label_onehot = torch.eye(32, dtype=torch.float32, device=x.device)[label]
+            # print(label_onehot)
+            add_label_em = torch.zeros_like(x)
+            i = 0
+            for embedding in label_onehot:
+                embedding = embedding.unsqueeze(0).repeat(32,1)
+                embedding = embedding.repeat(3,1,1)
+                add_label_em[i] = embedding
+                i = i + 1
+            # print(add_label_em.size())
+            x = x + label_embedded.view(x.shape[0],3,32,32) + add_label_em.view(x.shape[0],3,32,32)
 
         # similar as done in the tf repo :
         if self.init_padding is not sample:

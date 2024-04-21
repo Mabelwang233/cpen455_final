@@ -76,7 +76,7 @@ if __name__ == '__main__':
     parser.add_argument('-m', '--mode', type=str,
                         default='validation', help='Mode for the dataset')
     parser.add_argument('-o', '--output_csv', type=str,
-                        default='predictions3.csv', help='Output CSV file for predictions')
+                        default='predictions5.csv', help='Output CSV file for predictions')
     
     args = parser.parse_args()
     pprint(args.__dict__)
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     #Write your code here
     #You should replace the random classifier with your trained model
     #Begin of your code
-    model = PixelCNN(nr_resnet=2, nr_filters=60, nr_logistic_mix=5)
+    model = PixelCNN(nr_resnet=1, nr_filters=80, nr_logistic_mix=5)
     #End of your code
     
     model = model.to(device)
