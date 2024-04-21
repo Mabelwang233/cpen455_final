@@ -13,6 +13,8 @@ from dataset import *
 from tqdm import tqdm
 from pprint import pprint
 import argparse
+import csv
+import os
 NUM_CLASSES = len(my_bidict)
 
 # Write your code here
@@ -44,7 +46,26 @@ def classifier(model, data_loader, device):
     
     return acc_tracker.get_ratio()
         
+def evaluate_and_save_predictions(model, data_dir, device, output_csv):
+    model.eval()
+    predictions = []
+    with torch.no_grad():
+        for filename in os.listdir(data_dir):
+            if filename.endswith('.jpg') or filename.endswith('.png'):  # Assuming images are JPEG or PNG
+                img_path = os.path.join(data_dir, filename)
+                img = Image.open(img_path)
+                img = transforms.Resize((32, 32))(img)
+                img_tensor = transforms.ToTensor()(img).unsqueeze(0).to(device)  # Convert to tensor and move to device
+                print(img_tensor.size())
+                predicted_label = get_label(model, img_tensor, device).item()
+                predictions.append((filename, predicted_label))
 
+    # Save predictions to CSV
+    with open(output_csv, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['id', 'label'])
+        writer.writerows(predictions)
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
@@ -54,6 +75,8 @@ if __name__ == '__main__':
                         default=32, help='Batch size for inference')
     parser.add_argument('-m', '--mode', type=str,
                         default='validation', help='Mode for the dataset')
+    parser.add_argument('-o', '--output_csv', type=str,
+                        default='predictions3.csv', help='Output CSV file for predictions')
     
     args = parser.parse_args()
     pprint(args.__dict__)
@@ -71,16 +94,16 @@ if __name__ == '__main__':
     #Write your code here
     #You should replace the random classifier with your trained model
     #Begin of your code
-    model = PixelCNN(nr_resnet=1, nr_filters=40, nr_logistic_mix=5)
+    model = PixelCNN(nr_resnet=2, nr_filters=60, nr_logistic_mix=5)
     #End of your code
     
     model = model.to(device)
     #Attention: the path of the model is fixed to 'models/conditional_pixelcnn.pth'
     #You should save your model to this path
-    model.load_state_dict(torch.load('models/conditional_pixelcnn_good1.pth'))
+    model.load_state_dict(torch.load('models\pcnn_cpen455_from_scratch_99.pth'))
     model.eval()
     print('model parameters loaded')
-    acc = classifier(model = model, data_loader = dataloader, device = device)
-    print(f"Accuracy: {acc}")
-        
+    # acc = classifier(model = model, data_loader = dataloader, device = device)
+    # print(f"Accuracy: {acc}")
+    evaluate_and_save_predictions(model=model, data_dir='data/test', device=device, output_csv=args.output_csv)
         

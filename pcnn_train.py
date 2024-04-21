@@ -228,13 +228,13 @@ if __name__ == '__main__':
                       args = args,
                       epoch = epoch,
                       mode = 'val')
-        if epoch % 5 == 0:
+        if epoch != 0 and epoch % 5 == 0:
             print('......evaluating......')
             acc = classifier(model = model, data_loader = val_loader, device = device)
             print(f"Accuracy: {acc}")
             if args.en_wandb:
                 wandb.log({"validation-acc" : acc})
-        if epoch % args.sampling_interval == 0:
+        if epoch != 0 and epoch % args.sampling_interval == 0:
             print('......sampling......')
             for label in my_bidict:
                 print(f"Label: {label}")

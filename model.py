@@ -67,7 +67,7 @@ class PixelCNN(nn.Module):
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
 
         self.label_embedding = nn.Embedding(num_embeddings = 4, embedding_dim = 3*32*32)
-        self.reshape_label = nn.Linear(4, 32*32)
+        # self.reshape_label = nn.Linear(4, 32*32) 
 
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
         self.down_layers = nn.ModuleList([PixelCNNLayer_down(down_nr_resnet[i], nr_filters,
