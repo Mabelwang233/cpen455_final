@@ -100,6 +100,8 @@ def discretized_mix_logistic_loss(x, l, sum_all = True):
     if sum_all:
         return -torch.sum(log_sum_exp(log_probs))
     else:
+        #added this line to return a loss vector of batch size 
+        #reference: https://github.com/openai/pixel-cnn
         return -torch.sum(log_sum_exp(log_probs),[1,2])
 
 
@@ -175,7 +177,7 @@ def right_shift(x, pad=None):
     pad = nn.ZeroPad2d((1, 0, 0, 0)) if pad is None else pad
     return pad(x)
 
-
+#modefied to take in label and pass in to model for sampling
 def sample(model, label, sample_batch_size, obs, sample_op):
     model.train(False)
     with torch.no_grad():

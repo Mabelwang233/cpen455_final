@@ -66,8 +66,8 @@ class PixelCNN(nn.Module):
         self.right_shift_pad = nn.ZeroPad2d((1, 0, 0, 0))
         self.down_shift_pad  = nn.ZeroPad2d((0, 0, 1, 0))
 
+        #Add an embedding layer for label
         self.label_embedding = nn.Embedding(num_embeddings = 4, embedding_dim = 3*32*32)
-        # self.reshape_label = nn.Linear(4, 32*32) 
 
         down_nr_resnet = [nr_resnet] + [nr_resnet + 1] * 2
         self.down_layers = nn.ModuleList([PixelCNNLayer_down(down_nr_resnet[i], nr_filters,
@@ -105,18 +105,19 @@ class PixelCNN(nn.Module):
 
         if label is not None:
             label = label.int()
+            #first pass label to the learnable embedding layer 
             label_embedded = self.label_embedding(label)
             # One-hot encode the labels
             label_onehot = torch.eye(32, dtype=torch.float32, device=x.device)[label]
-            # print(label_onehot)
             add_label_em = torch.zeros_like(x)
             i = 0
+            #reshape one-hot encoding to 3x32x32
             for embedding in label_onehot:
                 embedding = embedding.unsqueeze(0).repeat(32,1)
                 embedding = embedding.repeat(3,1,1)
                 add_label_em[i] = embedding
                 i = i + 1
-            # print(add_label_em.size())
+            #add both encoding to x
             x = x + label_embedded.view(x.shape[0],3,32,32) + add_label_em.view(x.shape[0],3,32,32)
 
         # similar as done in the tf repo :

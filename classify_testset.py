@@ -1,10 +1,5 @@
 '''
-This code is used to evaluate the classification accuracy of the trained model.
-You should at least guarantee this code can run without any error on validation set.
-And whether this code can run is the most important factor for grading.
-We provide the remaining code, all you should do are, and you can't modify the remaining code:
-1. Replace the random classifier with your trained model.(line 64-68)
-2. modify the get_label function to get the predicted label.(line 18-24)(just like Leetcode solutions)
+script to classify the test set and save result to result.csv, logits to logits.pt
 '''
 from torchvision import datasets, transforms
 from utils import *
@@ -16,10 +11,9 @@ import argparse
 import csv
 import os
 NUM_CLASSES = len(my_bidict)
-# Write your code here
-# And get the predicted label, which is a tensor of shape (batch_size,)
-# Begin of your code
-def get_label(model, model_input, device):
+logits = torch.empty(519, 4)
+
+def get_test_label(model, model_input, device, img_idx = None):
     loss_op   = lambda real, fake : discretized_mix_logistic_loss(real, fake, sum_all= False)
     ans = []
     #feed the every images with 4 labels repectively
@@ -27,29 +21,35 @@ def get_label(model, model_input, device):
         loss_all = []
         image_in = image_in.unsqueeze(0).to(device)
         for i in range(NUM_CLASSES):
-            #let the trained model to get the output image
             image_out = model(image_in,  torch.tensor([i]).to(device))
-            #use loss function to obtain the loss
             loss_all.append(loss_op(image_in, image_out))
+        logits[img_idx, :] = torch.tensor(loss_all)
         #the label makes the smallest loss is the most likely label
         ans.append(np.argmin([loss.detach().cpu().numpy() for loss in loss_all]))
     return torch.tensor(ans).to(device) 
-# End of your code
 
-def classifier(model, data_loader, device):
+#helper function to classify the test set, and save result to result.csv   
+def evaluate_and_save_predictions(model, data_dir, device, output_csv):
     model.eval()
-    acc_tracker = ratio_tracker()
-    for batch_idx, item in enumerate(tqdm(data_loader)):
-        model_input, categories = item
-        model_input = model_input.to(device)
-        original_label = [my_bidict[item] for item in categories]
-        original_label = torch.tensor(original_label, dtype=torch.int64).to(device)
-        answer = get_label(model, model_input, device)
-        correct_num = torch.sum(answer == original_label)
-        acc_tracker.update(correct_num.item(), model_input.shape[0])
-    
-    return acc_tracker.get_ratio()
+    predictions = []
+    with torch.no_grad():
+        i = 0
+        for filename in os.listdir(data_dir):
+            if filename.endswith('.jpg') or filename.endswith('.png'):  # Assuming images are JPEG or PNG
+                img_path = os.path.join(data_dir, filename)
+                img = Image.open(img_path)
+                img = transforms.Resize((32, 32))(img)
+                img_tensor = transforms.ToTensor()(img).unsqueeze(0).to(device)  # Convert to tensor and move to device
+                predicted_label = get_test_label(model, img_tensor, device, i).item()
+                predictions.append((filename, predicted_label))
+                i = i + 1
 
+    # Save predictions to CSV
+    with open(output_csv, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['id', 'label'])
+        writer.writerows(predictions)
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--batch_size', type=int,
                         default=32, help='Batch size for inference')
     parser.add_argument('-m', '--mode', type=str,
-                        default='validation', help='Mode for the dataset')
+                        default='test', help='Mode for the dataset')
     
     args = parser.parse_args()
     pprint(args.__dict__)
@@ -72,21 +72,17 @@ if __name__ == '__main__':
                                              batch_size=args.batch_size, 
                                              shuffle=True, 
                                              **kwargs)
-
-    #Write your code here
-    #You should replace the random classifier with your trained model
-    #Begin of your code
+    #load model
     model = PixelCNN(nr_resnet=1, nr_filters=80, nr_logistic_mix=5)
-    #End of your code
-    
     model = model.to(device)
-    #Attention: the path of the model is fixed to 'models/conditional_pixelcnn.pth'
-    #You should save your model to this path
+
     model.load_state_dict(torch.load('models\conditional_pixelcnn.pth'))
     model.eval()
     print('model parameters loaded')
+    #Test set does not have known label, so can not get accuracy
 
-    acc = classifier(model = model, data_loader = dataloader, device = device)
-    print(f"Accuracy: {acc}")
-
+    #Added to save .pt and .csv file for submission
+    evaluate_and_save_predictions(model=model, data_dir='data/test', device=device, output_csv='result.csv')
+    print(logits)
+    torch.save(logits, 'logits.pt')
         

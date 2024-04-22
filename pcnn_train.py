@@ -25,25 +25,25 @@ def train_or_test(model, data_loader, optimizer, loss_op, device, args, epoch, m
     loss_tracker = mean_tracker()
     
     for batch_idx, item in enumerate(tqdm(data_loader)):
+        #take image and label from input
         model_input, label = item
         tokens = list(label)
         label_encoded = []
+        #label lookup from string to number
         for token in tokens:
             token_id = my_bidict.get(token, None)
             if token_id is not None:
                 label_encoded.append(token_id)
         model_input = model_input.to(device)
         label_encoded = torch.tensor(label_encoded).to(device)
+        #pass in both image and label to the model
         model_output = model(model_input, label_encoded)
         loss = loss_op(model_input, model_output)
         loss_tracker.update(loss.item()/deno)
         if mode == 'training':
             optimizer.zero_grad()
             loss.backward()
-            optimizer.step()
-    # if mode != 'training':
-    #     acc = classifier(model = model, data_loader = data_loader, device = device)
-    #     print(f"Accuracy: {acc}")    
+            optimizer.step()    
     if args.en_wandb:
         wandb.log({mode + "-Average-BPD" : loss_tracker.get_mean()})
         wandb.log({mode + "-epoch": epoch})
@@ -261,5 +261,3 @@ if __name__ == '__main__':
             if not os.path.exists("models"):
                 os.makedirs("models")
             torch.save(model.state_dict(), 'models/{}_{}.pth'.format(model_name, epoch))
-    
-    torch.save(model.state_dict(), 'models/conditional_pixelcnn.pth')
